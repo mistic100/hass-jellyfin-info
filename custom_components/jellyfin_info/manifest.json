@@ -6,6 +6,6 @@
     "documentation": "https://github.com/mistic100/hass-jellyfin-info",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/mistic100/hass-jellyfin-info/issues",
-    "requirements": ["jellyfin-sdk @ git+https://github.com/mistic100/jellyfin-sdk-python@clean"],
+    "requirements": ["jellyfin-sdk@git+https://github.com/mistic100/jellyfin-sdk-python@clean"],
     "version": "1.0.0"
 }

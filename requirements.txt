@@ -1,1 +1,1 @@
-jellyfin-sdk @ git+https://github.com/mistic100/jellyfin-sdk-python@clean
+jellyfin-sdk@git+https://github.com/mistic100/jellyfin-sdk-python@clean
