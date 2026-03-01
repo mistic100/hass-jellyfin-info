@@ -1,11 +1,11 @@
 """Config flow for Jellyfin Info integration."""
 
 import logging
+import requests
 from urllib.parse import urlparse
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-import jellyfin
 
 from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, DOMAIN
 
@@ -44,9 +44,9 @@ async def validate_jellyfin_connection(
     try:
         @callback
         def get_version() -> bool:
-            client = jellyfin.api(server_url, auth_token)
-            version = client.system.info.version
-            _LOGGER.info(f"Jellyfin server is version {version}")
+            response = requests.get(f"{server_url}/System/Ping?ApiKey={auth_token}")
+            response.raise_for_status()
+            _LOGGER.info(f"Connected to {response.text}")
             return True
         return await hass.async_add_executor_job(get_version)
     except Exception as err:

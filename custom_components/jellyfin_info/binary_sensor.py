@@ -37,7 +37,7 @@ async def async_setup_entry(
         if not coordinator.data.users:
             return
 
-        usernames = {str(user.name) for user in coordinator.data.users}
+        usernames = {user.get("Name") for user in coordinator.data.users}
 
         if usernames:
             new_entities = [
@@ -80,17 +80,15 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
 
     @property
     def device_info(self) -> DeviceInfo:
-        manufacturer: str | None = None
         sw_version: str | None = None
 
         if self.coordinator.data.system:
-            manufacturer = self.coordinator.data.system.product_name
-            sw_version = self.coordinator.data.system.version
+            sw_version = self.coordinator.data.system.get("Version")
 
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.coordinator.config_entry.entry_id}_session")},
             name="Jellyfin Sessions",
-            manufacturer=manufacturer,
+            manufacturer="Jellyfin Server",
             sw_version=sw_version,
             
         )
@@ -109,8 +107,8 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
         try:
             session = self.coordinator.get_playing_session(self.username)
 
-            if session and session.now_playing_item:
-                match session.now_playing_item.type:
+            if session and session.get("NowPlayingItem"):
+                match session.get("NowPlayingItem").get("Type"):
                     case "Audio":
                         return "mdi:music"
                     case "Episode":
@@ -131,18 +129,18 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
             session = self.coordinator.get_playing_session(self.username)
             attributes = {}
 
-            if session and session.now_playing_item:
-                item = session.now_playing_item
+            if session and session.get("NowPlayingItem"):
+                item = session.get("NowPlayingItem")
 
-                attributes[ATTR_MEDIA_TYPE] = item.type
+                attributes[ATTR_MEDIA_TYPE] = item.get("Type")
 
-                match item.type:
+                match item.get("Type"):
                     case "Audio":
-                        attributes[ATTR_MEDIA_NAME] = f"{item.album_artist} - {item.album}"
+                        attributes[ATTR_MEDIA_NAME] = f"{item.get("AlbumArtist")} - {item.get("Album")}"
                     case "Episode":
-                        attributes[ATTR_MEDIA_NAME] = f"{item.series_name} - {item.season_name}"
+                        attributes[ATTR_MEDIA_NAME] = f"{item.get("SeriesName")} - {item.get("SeasonName")}"
                     case _:
-                        attributes[ATTR_MEDIA_NAME] = item.name
+                        attributes[ATTR_MEDIA_NAME] = item.get("Name")
             
             return attributes
         except Exception:
