@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Jellyfin Server",
+        "description": "Configure a Jellyfin server",
+        "data": {
+          "server_url": "Server URL",
+          "auth_token": "Authentication Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the Jellyfin server",
+      "invalid_auth": "Invalid authentication token",
+      "invalid_url": "Invalid server URL format"
+    },
+    "abort": {
+      "already_configured": "This Jellyfin server is already configured"
+    }
+  }
+}

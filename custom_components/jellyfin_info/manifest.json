@@ -1,0 +1,12 @@
+{
+    "domain": "jellyfin_info",
+    "name": "Jellyfin Info",
+    "codeowners": ["@mistic100"],
+    "config_flow": true,
+    "documentation": "https://github.com/mistic100/hass-jellyfin-info",
+    "integration_type ": "hub",
+    "iot_class": "cloud_polling",
+    "issue_tracker": "https://github.com/mistic100/hass-jellyfin-info/issues",
+    "requirements": ["jellyfin-sdk @ git+https://github.com/mistic100/jellyfin-sdk-python@clean"],
+    "version": "1.0.0"
+}
