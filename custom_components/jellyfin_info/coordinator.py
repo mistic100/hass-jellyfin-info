@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, CONF_AUTH_TOKEN, CONF_SERVER_URL, SCAN_INTERVAL
+from .const import DOMAIN, CONF_AUTH_TOKEN, CONF_SERVER_URL, SCAN_INTERVAL, QUERY_TIMEOUT
 from .model import JellyfinData, Session
 from .utils import get_api_url
 
@@ -54,17 +54,18 @@ class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
             return self.data
         except Exception as err:
             raise UpdateFailed(f"Error communicating with Jellyfin: {err}") from err
-        
-    def _api_url(self, endpoint: str) -> str:
-        return get_api_url(self.server_url, self.auth_token, endpoint)
+    
+    def _query(self, endpoint: str) -> Any:
+        url = get_api_url(self.server_url, self.auth_token, endpoint)
+        response = requests.get(url=url, timeout=QUERY_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
 
     def fetch_system(self) -> None:
         """Get server system information."""
         try:
             _LOGGER.debug(f"Fetch system info for {self.server_url}")
-            response = requests.get(self._api_url("System/Info/Public"))
-            response.raise_for_status()
-            self.data.system = response.json()
+            self.data.system = self._query("System/Info/Public")
             self.data.initialized = True
         except Exception as err:
             _LOGGER.error("Error getting system info: %s", err)
@@ -74,9 +75,7 @@ class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
         """Get users from the Jellyfin server."""
         try:
             _LOGGER.debug(f"Fetch users for {self.server_url}")
-            response = requests.get(self._api_url("Users"))
-            response.raise_for_status()
-            self.data.users = response.json()
+            self.data.users = self._query("Users")
             _LOGGER.debug(f"{len(self.data.users)} users found")
         except Exception as err:
             _LOGGER.error("Error getting users: %s", err)
@@ -86,9 +85,7 @@ class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
         """Get active sessions from the Jellyfin server."""
         try:
             _LOGGER.debug(f"Fetch sessions for {self.server_url}")
-            response = requests.get(self._api_url("Sessions"))
-            response.raise_for_status()
-            self.data.sessions = response.json()
+            self.data.sessions = self._query("Sessions")
             _LOGGER.debug(f"{len(self.data.sessions)} sessions found")
         except Exception as err:
             _LOGGER.error("Error getting sessions: %s", err)

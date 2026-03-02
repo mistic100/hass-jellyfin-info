@@ -16,7 +16,8 @@
       "invalid_url": "Invalid server URL format"
     },
     "abort": {
-      "already_configured": "This Jellyfin server is already configured"
+      "already_configured": "This Jellyfin server is already configured",
+      "reconfigure_successful": "Reconfigure successful."
     }
   }
 }

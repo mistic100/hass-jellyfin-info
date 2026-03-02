@@ -2,6 +2,7 @@
 
 DOMAIN = "jellyfin_info"
 SCAN_INTERVAL = 10  # seconds
+QUERY_TIMEOUT = 5 # seconds
 
 # Config keys
 CONF_SERVER_URL = "server_url"

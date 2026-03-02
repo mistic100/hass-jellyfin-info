@@ -7,7 +7,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 
-from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, DOMAIN
+from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, DOMAIN, QUERY_TIMEOUT
 from .utils import get_api_url
 
 
@@ -23,36 +23,19 @@ def _base_schema():
     )
 
 
-# def _reconfigure_schema(entry: ConfigEntry):
-#     return vol.Schema(
-#         {
-#             vol.Required(
-#                 CONF_SERVER_URL,
-#                 default=entry.data.get(CONF_SERVER_URL, ""),
-#             ): str,
-#             vol.Required(
-#                 CONF_AUTH_TOKEN,
-#                 default=entry.data.get(CONF_AUTH_TOKEN, ""),
-#             ): str,
-#         }
-#     )
-
-
-async def validate_jellyfin_connection(
-    hass: HomeAssistant, server_url: str, auth_token: str
-) -> bool:
-    """Validate Jellyfin server connection."""
-    try:
-        @callback
-        def get_version() -> bool:
-            response = requests.get(get_api_url(server_url, auth_token, "System/Ping"))
-            response.raise_for_status()
-            _LOGGER.info(f"Connected to {response.text}")
-            return True
-        return await hass.async_add_executor_job(get_version)
-    except Exception as err:
-        _LOGGER.error("Failed to connect to Jellyfin: %s", err)
-        return False
+def _reconfigure_schema(entry: ConfigEntry):
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_SERVER_URL,
+                default=entry.data.get(CONF_SERVER_URL, ""),
+            ): str,
+            vol.Required(
+                CONF_AUTH_TOKEN,
+                default=entry.data.get(CONF_AUTH_TOKEN, ""),
+            ): str,
+        }
+    )
 
 
 class JellyfinInfoConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -76,9 +59,7 @@ class JellyfinInfoConfigFlow(ConfigFlow, domain=DOMAIN):
             elif not auth_token:
                 errors["base"] = "invalid_auth"
             # Validate connection
-            elif not await validate_jellyfin_connection(
-                self.hass, server_url, auth_token
-            ):
+            elif not await self._validate_jellyfin_connection(server_url, auth_token):
                 errors["base"] = "cannot_connect"
 
             if not errors:
@@ -97,37 +78,54 @@ class JellyfinInfoConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=_base_schema(), errors=errors
         )
 
-    # async def async_step_reconfigure(
-    #     self, user_input: dict | None = None
-    # ) -> ConfigFlowResult:
-    #     """Allow the integration to be reconfigured from the UI."""
-    #     errors: dict[str, str] = {}
+    async def async_step_reconfigure(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Allow the integration to be reconfigured from the UI."""
+        errors: dict[str, str] = {}
 
-    #     entry = self._get_reconfigure_entry()
+        entry = self._get_reconfigure_entry()
 
-    #     if user_input:
-    #         server_url = user_input.get(CONF_SERVER_URL, "").strip()
-    #         auth_token = user_input.get(CONF_AUTH_TOKEN, "").strip()
+        if user_input:
+            server_url = user_input.get(CONF_SERVER_URL, "").strip().rstrip("/")
+            auth_token = user_input.get(CONF_AUTH_TOKEN, "").strip()
+            url_parsed = urlparse(server_url)
 
-    #         if not server_url.startswith(("http://", "https://")):
-    #             errors["base"] = "invalid_url"
-    #         elif not auth_token:
-    #             errors["base"] = "invalid_auth"
-    #         elif not await validate_jellyfin_connection(
-    #             self.hass, server_url, auth_token
-    #         ):
-    #             errors["base"] = "cannot_connect"
+            # Validate URL format
+            if not url_parsed.scheme or not url_parsed.netloc or not url_parsed.scheme in ["http", "https"]:
+                errors["base"] = "invalid_url"
+            # Validate auth token is not empty
+            elif not auth_token:
+                errors["base"] = "invalid_auth"
+            # Validate connection
+            elif not await self._validate_jellyfin_connection(server_url, auth_token):
+                errors["base"] = "cannot_connect"
 
-    #         if not errors:
-    #             self.hass.config_entries.async_update_entry(
-    #                 entry,
-    #                 data={
-    #                     CONF_SERVER_URL: server_url,
-    #                     CONF_AUTH_TOKEN: auth_token,
-    #                 },
-    #             )
-    #             return self.async_abort(reason="reconfigured")
+            if not errors:
+                return self.async_update_reload_and_abort(
+                    entry=entry,
+                    title=f"Jellyfin ({url_parsed.netloc})",
+                    data={
+                        CONF_SERVER_URL: server_url,
+                        CONF_AUTH_TOKEN: auth_token,
+                    },
+                )
 
-    #     return self.async_show_form(
-    #         step_id="reconfigure", data_schema=_reconfigure_schema(entry), errors=errors
-    #     )
+        return self.async_show_form(
+            step_id="reconfigure", data_schema=_reconfigure_schema(entry), errors=errors
+        )
+
+    async def _validate_jellyfin_connection(self, server_url: str, auth_token: str) -> bool:
+        """Validate Jellyfin server connection."""
+        try:
+            @callback
+            def get_version() -> bool:
+                # Make sure to use an anthenticated endpoint
+                response = requests.get(get_api_url(server_url, auth_token, "System/Info"), timeout=QUERY_TIMEOUT)
+                response.raise_for_status()
+                _LOGGER.info(f"Connected to {response.text}")
+                return True
+            return await self.hass.async_add_executor_job(get_version)
+        except Exception as err:
+            _LOGGER.error("Failed to connect to Jellyfin: %s", err)
+            return False
