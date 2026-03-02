@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, ConfigEnt
 from homeassistant.core import HomeAssistant, callback
 
 from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, DOMAIN
+from .utils import get_api_url
 
 
 _LOGGER = logging.getLogger(DOMAIN)
@@ -44,7 +45,7 @@ async def validate_jellyfin_connection(
     try:
         @callback
         def get_version() -> bool:
-            response = requests.get(f"{server_url}/System/Ping?ApiKey={auth_token}")
+            response = requests.get(get_api_url(server_url, auth_token, "System/Ping"))
             response.raise_for_status()
             _LOGGER.info(f"Connected to {response.text}")
             return True

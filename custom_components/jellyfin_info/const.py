@@ -6,7 +6,3 @@ SCAN_INTERVAL = 10  # seconds
 # Config keys
 CONF_SERVER_URL = "server_url"
 CONF_AUTH_TOKEN = "auth_token"
-
-# Data keys
-ATTR_MEDIA_NAME = "media_name"
-ATTR_MEDIA_TYPE = "media_type"

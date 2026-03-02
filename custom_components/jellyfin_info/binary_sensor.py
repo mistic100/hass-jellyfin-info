@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers import entity_platform as ep
 
 from .coordinator import JellyfinCoordinator
-from .const import ATTR_MEDIA_NAME, ATTR_MEDIA_TYPE, DOMAIN
+from .const import DOMAIN
 
 
 _LOGGER = logging.getLogger(DOMAIN)
@@ -28,24 +28,19 @@ async def async_setup_entry(
 ) -> None:
     """Add and remove entities."""
     platform = ep.async_get_current_platform()
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator: JellyfinCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     @callback
     async def async_update_entities() -> None:
         """Update entities when coordinator data is updated."""
 
-        if not coordinator.data.users:
-            return
-
-        usernames = {user.get("Name") for user in coordinator.data.users}
-
-        if usernames:
+        if coordinator.data.users:
             new_entities = [
-                JellyfinSessionBinarySensor(coordinator, username)
-                for username in usernames
+                JellyfinSessionBinarySensor(coordinator, user["Name"])
+                for user in coordinator.data.users
             ]
             await platform.async_add_entities(new_entities)
-            _LOGGER.debug(f"Created entities for users: {usernames}")
+            _LOGGER.debug(f"Created entities for {len(new_entities)} users")
 
     await async_update_entities()
 
@@ -83,14 +78,13 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
         sw_version: str | None = None
 
         if self.coordinator.data.system:
-            sw_version = self.coordinator.data.system.get("Version")
+            sw_version = self.coordinator.data.system["Version"]
 
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.coordinator.config_entry.entry_id}_session")},
             name="Jellyfin Sessions",
             manufacturer="Jellyfin Server",
             sw_version=sw_version,
-            
         )
 
     @property
@@ -107,8 +101,8 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
         try:
             session = self.coordinator.get_playing_session(self.username)
 
-            if session and session.get("NowPlayingItem"):
-                match session.get("NowPlayingItem").get("Type"):
+            if session and session["NowPlayingItem"]:
+                match session["NowPlayingItem"]["Type"]:
                     case "Audio":
                         return "mdi:music"
                     case "Episode":
@@ -122,6 +116,14 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
         except Exception:
             return None
 
+    def _get_image_url(self, item_id: str, variant: str = "Primary") -> str:
+        url: str
+        if self.coordinator.data.system["LocalAddress"]:
+            url = f"https://{self.coordinator.data.system["LocalAddress"]}"
+        else:
+            url = self.coordinator.server_url
+        return url + f"/Items/{item_id}/Images/{variant}?fillHeight=600&fillWidth=600&quality=95"
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
@@ -129,18 +131,21 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
             session = self.coordinator.get_playing_session(self.username)
             attributes = {}
 
-            if session and session.get("NowPlayingItem"):
-                item = session.get("NowPlayingItem")
+            if session and session["NowPlayingItem"]:
+                item = session["NowPlayingItem"]
 
-                attributes[ATTR_MEDIA_TYPE] = item.get("Type")
+                attributes["type"] = item["Type"]
+                attributes["name"] = item["Name"]
 
-                match item.get("Type"):
+                match item["Type"]:
                     case "Audio":
-                        attributes[ATTR_MEDIA_NAME] = f"{item.get("AlbumArtist")} - {item.get("Album")}"
+                        attributes["parent_name"] = f"{item["AlbumArtist"]} - {item["Album"]}"
+                        attributes["cover_url"] = self._get_image_url(item["AlbumId"])
                     case "Episode":
-                        attributes[ATTR_MEDIA_NAME] = f"{item.get("SeriesName")} - {item.get("SeasonName")}"
-                    case _:
-                        attributes[ATTR_MEDIA_NAME] = item.get("Name")
+                        attributes["parent_name"] = f"{item["SeriesName"]} - {item["SeasonName"]}"
+                        attributes["cover_url"] = self._get_image_url(item["SeasonId"])
+                    case "Movie":
+                        attributes["cover_url"] = self._get_image_url(item["Id"])
             
             return attributes
         except Exception:

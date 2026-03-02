@@ -7,16 +7,18 @@ This integration connects to a Jellyfin server API to expose some data about the
 
 The following sensors are available:
 
-- user session
+- user sessions
 
-### User session
+### User sessions
 
 A binary sensor is created for each user registered on the server which is ON when the user has at least one active session (ie. a media is playing).
 
 The sensor also has additional attributes:
 
-- `media_type`
-- `media_name`
+- `type` ("Audio", "Episode", "Movie")
+- `name`
+- `parent_name` ("artist - album" for audio, "series - season" for episode)
+- `cover_url`
 
 All sensors are grouped under a single "Jellyfin Sessions" device.
 
