@@ -11,12 +11,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, CONF_AUTH_TOKEN, CONF_SERVER_URL, SCAN_INTERVAL, QUERY_TIMEOUT
+from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, SCAN_INTERVAL, QUERY_TIMEOUT
 from .model import JellyfinData, Session
 from .utils import get_api_url
 
 
-_LOGGER = logging.getLogger(DOMAIN)
+_LOGGER = logging.getLogger(__name__)
 
 
 class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
@@ -103,10 +103,10 @@ class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
             # Get active session
             for session in self.data.sessions:
                 if (
-                    session["UserName"] == username
-                    and session["NowPlayingItem"]
-                    and session["PlayState"]
-                    and session["PlayState"]["IsPaused"] == False
+                    session.get("UserName") == username
+                    and session.get("NowPlayingItem")
+                    and session.get("PlayState")
+                    and session.get("PlayState").get("IsPaused") == False
                 ):
                     _LOGGER.debug(f"Found playing session {session["Id"]}")
                     return session
@@ -114,8 +114,8 @@ class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
             # Get paused session
             for session in self.data.sessions:
                 if (
-                    session["UserName"] == username
-                    and session["NowPlayingItem"]
+                    session.get("UserName") == username
+                    and session.get("NowPlayingItem")
                 ):
                     _LOGGER.debug(f"Found paused session {session["Id"]}")
                     return session

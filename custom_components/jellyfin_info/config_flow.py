@@ -5,13 +5,13 @@ import requests
 from urllib.parse import urlparse
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 
 from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, DOMAIN, QUERY_TIMEOUT
 from .utils import get_api_url
 
 
-_LOGGER = logging.getLogger(DOMAIN)
+_LOGGER = logging.getLogger(__name__)
 
 
 def _base_schema():

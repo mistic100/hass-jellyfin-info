@@ -18,7 +18,7 @@ from .coordinator import JellyfinCoordinator
 from .const import DOMAIN
 
 
-_LOGGER = logging.getLogger(DOMAIN)
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -78,7 +78,7 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
         sw_version: str | None = None
 
         if self.coordinator.data.system:
-            sw_version = self.coordinator.data.system["Version"]
+            sw_version = self.coordinator.data.system.get("Version")
 
         return DeviceInfo(
             identifiers={(DOMAIN, f"{self.coordinator.config_entry.entry_id}_session")},
@@ -101,8 +101,8 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
         try:
             session = self.coordinator.get_playing_session(self.username)
 
-            if session and session["NowPlayingItem"]:
-                match session["NowPlayingItem"]["Type"]:
+            if session:
+                match session.get("NowPlayingItem").get("Type"):
                     case "Audio":
                         return "mdi:music"
                     case "Episode":
@@ -118,8 +118,8 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
 
     def _get_image_url(self, item_id: str, variant: str = "Primary") -> str:
         url: str
-        if self.coordinator.data.system["LocalAddress"]:
-            url = f"https://{self.coordinator.data.system["LocalAddress"]}"
+        if self.coordinator.data.system.get("LocalAddress"):
+            url = f"https://{self.coordinator.data.system.get("LocalAddress")}"
         else:
             url = self.coordinator.server_url
         return url + f"/Items/{item_id}/Images/{variant}?fillHeight=600&fillWidth=600&quality=95"
@@ -131,21 +131,21 @@ class JellyfinSessionBinarySensor(CoordinatorEntity[JellyfinCoordinator], Binary
             session = self.coordinator.get_playing_session(self.username)
             attributes = {}
 
-            if session and session["NowPlayingItem"]:
-                item = session["NowPlayingItem"]
+            if session:
+                item = session.get("NowPlayingItem")
 
-                attributes["type"] = item["Type"]
-                attributes["name"] = item["Name"]
+                attributes["type"] = item.get("Type")
+                attributes["name"] = item.get("Name")
 
-                match item["Type"]:
+                match item.get("Type"):
                     case "Audio":
-                        attributes["parent_name"] = f"{item["AlbumArtist"]} - {item["Album"]}"
-                        attributes["cover_url"] = self._get_image_url(item["AlbumId"])
+                        attributes["parent_name"] = f"{item.get("AlbumArtist")} - {item.get("Album")}"
+                        attributes["cover_url"] = self._get_image_url(item.get("AlbumId"))
                     case "Episode":
-                        attributes["parent_name"] = f"{item["SeriesName"]} - {item["SeasonName"]}"
-                        attributes["cover_url"] = self._get_image_url(item["SeasonId"])
+                        attributes["parent_name"] = f"{item.get("SeriesName")} - {item.get("SeasonName")}"
+                        attributes["cover_url"] = self._get_image_url(item.get("SeasonId"))
                     case "Movie":
-                        attributes["cover_url"] = self._get_image_url(item["Id"])
+                        attributes["cover_url"] = self._get_image_url(item.get("Id"))
             
             return attributes
         except Exception:

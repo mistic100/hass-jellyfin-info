@@ -25,8 +25,8 @@ class NowPlayingItem(TypedDict):
 class Session(TypedDict):
     Id: str
     UserName: str
-    PlayState: PlayState | None
-    NowPlayingItem: NowPlayingItem | None
+    PlayState: PlayState
+    NowPlayingItem: NowPlayingItem
 
 class JellyfinData():
     initialized: bool = False
