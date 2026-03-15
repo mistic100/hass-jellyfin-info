@@ -1,20 +1,21 @@
 """Jellyfin client for interacting with Jellyfin API."""
 
 from __future__ import annotations
+
+import logging
+from datetime import timedelta
 from typing import Any
 
 import requests
-import logging
-from datetime import timedelta
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (DataUpdateCoordinator,
+                                                      UpdateFailed)
 
-from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, SCAN_INTERVAL, QUERY_TIMEOUT
+from .const import (CONF_AUTH_TOKEN, CONF_IGNORE_PAUSED, CONF_SERVER_URL,
+                    QUERY_TIMEOUT, SCAN_INTERVAL)
 from .model import JellyfinData, Session
 from .utils import get_api_url
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,9 +26,10 @@ class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         """Initialize the Jellyfin coordinator."""
         self.hass = hass
-        self.config_entry: ConfigEntry = config_entry
+        self.config_entry = config_entry
         self.server_url = config_entry.data[CONF_SERVER_URL]
         self.auth_token = config_entry.data[CONF_AUTH_TOKEN]
+        self.reload_options()
 
         # Initialize coordinator
         super().__init__(
@@ -41,6 +43,9 @@ class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
         self.data = JellyfinData()
 
         _LOGGER.debug(f"Initialized client for {self.server_url}")
+
+    def reload_options(self):
+        self.ignore_paused = self.config_entry.options.get(CONF_IGNORE_PAUSED, False)
 
     async def _async_update_data(self) -> JellyfinData:
         """Fetch data from Jellyfin."""
@@ -112,13 +117,14 @@ class JellyfinCoordinator(DataUpdateCoordinator[JellyfinData]):
                     return session
             
             # Get paused session
-            for session in self.data.sessions:
-                if (
-                    session.get("UserName") == username
-                    and session.get("NowPlayingItem")
-                ):
-                    _LOGGER.debug(f"Found paused session {session["Id"]}")
-                    return session
+            if not self.ignore_paused:
+                for session in self.data.sessions:
+                    if (
+                        session.get("UserName") == username
+                        and session.get("NowPlayingItem")
+                    ):
+                        _LOGGER.debug(f"Found paused session {session["Id"]}")
+                        return session
  
             _LOGGER.debug("No session found")
             return None

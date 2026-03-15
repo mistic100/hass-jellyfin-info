@@ -2,34 +2,14 @@
 
 from __future__ import annotations
 
-import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
 
-from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, DOMAIN
+from .const import DOMAIN
 from .coordinator import JellyfinCoordinator
 
-
 PLATFORMS = [Platform.BINARY_SENSOR]
-
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.All(
-            cv.ensure_list,
-            [
-                vol.Schema(
-                    {
-                        vol.Required(CONF_SERVER_URL): cv.url,
-                        vol.Required(CONF_AUTH_TOKEN): cv.string,
-                    }
-                )
-            ],
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
@@ -47,7 +27,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
     config_entry.async_on_unload(config_entry.add_update_listener(async_reload_entry))
 
+    config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
+
     return True
+
+
+async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
+    """Handle options update."""
+    coordinator: JellyfinCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    coordinator.reload_options()
 
 
 async def async_reload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> None:

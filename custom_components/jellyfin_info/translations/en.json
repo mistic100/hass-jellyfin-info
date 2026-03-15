@@ -3,7 +3,13 @@
     "step": {
       "user": {
         "title": "Jellyfin Server",
-        "description": "Configure a Jellyfin server",
+        "data": {
+          "server_url": "Server URL",
+          "auth_token": "Authentication Token"
+        }
+      },
+      "reconfigure": {
+        "title": "Jellyfin Server",
         "data": {
           "server_url": "Server URL",
           "auth_token": "Authentication Token"
@@ -11,13 +17,23 @@
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to the Jellyfin server",
-      "invalid_auth": "Invalid authentication token",
-      "invalid_url": "Invalid server URL format"
+      "cannot_connect": "Failed to connect to the Jellyfin server.",
+      "invalid_auth": "Invalid authentication token.",
+      "invalid_url": "Invalid server URL format."
     },
     "abort": {
-      "already_configured": "This Jellyfin server is already configured",
+      "already_configured": "This Jellyfin server is already configured.",
       "reconfigure_successful": "Reconfigure successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Jellyfin Options",
+        "data": {
+          "ignore_paused": "Ignore paused sessions (appear stopped)"
+        }
+      }
     }
   }
 }

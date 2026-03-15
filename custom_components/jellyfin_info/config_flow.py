@@ -1,41 +1,33 @@
 """Config flow for Jellyfin Info integration."""
 
 import logging
-import requests
 from urllib.parse import urlparse
+
+import requests
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, ConfigEntry
+from homeassistant.config_entries import (ConfigEntry, ConfigFlow,
+                                          ConfigFlowResult, OptionsFlow)
 from homeassistant.core import callback
 
-from .const import CONF_AUTH_TOKEN, CONF_SERVER_URL, DOMAIN, QUERY_TIMEOUT
+from .const import (CONF_AUTH_TOKEN, CONF_IGNORE_PAUSED, CONF_SERVER_URL,
+                    DOMAIN, QUERY_TIMEOUT)
 from .utils import get_api_url
-
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def _base_schema():
-    return vol.Schema(
-        {
-            vol.Required(CONF_SERVER_URL): str,
-            vol.Required(CONF_AUTH_TOKEN): str,
-        }
-    )
+CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_SERVER_URL): str,
+        vol.Required(CONF_AUTH_TOKEN): str,
+    }
+)
 
-
-def _reconfigure_schema(entry: ConfigEntry):
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_SERVER_URL,
-                default=entry.data.get(CONF_SERVER_URL, ""),
-            ): str,
-            vol.Required(
-                CONF_AUTH_TOKEN,
-                default=entry.data.get(CONF_AUTH_TOKEN, ""),
-            ): str,
-        }
-    )
+OPTIONS_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_IGNORE_PAUSED): bool,
+    }
+)
 
 
 class JellyfinInfoConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -43,7 +35,9 @@ class JellyfinInfoConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(self, user_input: dict | None = None) -> ConfigFlowResult:
+    async def async_step_user(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
@@ -75,7 +69,7 @@ class JellyfinInfoConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="user", data_schema=_base_schema(), errors=errors
+            step_id="user", data_schema=CONFIG_SCHEMA, errors=errors
         )
 
     async def async_step_reconfigure(
@@ -112,10 +106,36 @@ class JellyfinInfoConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="reconfigure", data_schema=_reconfigure_schema(entry), errors=errors
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                CONFIG_SCHEMA, entry.data
+            ),
+            errors=errors
         )
+    
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        class OptionsFlowHandler(OptionsFlow):
+            async def async_step_init(
+                self, user_input: dict | None = None
+            ) -> ConfigFlowResult:
+                """Manage the options."""
+                if user_input:
+                    return self.async_create_entry(data=user_input)
 
-    async def _validate_jellyfin_connection(self, server_url: str, auth_token: str) -> bool:
+                return self.async_show_form(
+                    step_id="init",
+                    data_schema=self.add_suggested_values_to_schema(
+                        OPTIONS_SCHEMA, self.config_entry.options
+                    ),
+                )
+
+        return OptionsFlowHandler()
+
+    async def _validate_jellyfin_connection(
+        self, server_url: str, auth_token: str
+    ) -> bool:
         """Validate Jellyfin server connection."""
         try:
             @callback

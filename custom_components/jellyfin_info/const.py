@@ -7,3 +7,4 @@ QUERY_TIMEOUT = 5 # seconds
 # Config keys
 CONF_SERVER_URL = "server_url"
 CONF_AUTH_TOKEN = "auth_token"
+CONF_IGNORE_PAUSED = "ignore_paused"
